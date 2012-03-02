@@ -973,15 +973,29 @@ abstract class ".$this->getClassname()." extends " . $parentClass . "
 				->addUsingAlias($localColumnConstant, {$objectName}->toKeyValue('PrimaryKey', '$foreignColumnName'), \$comparison);";
 		}
 		$script .= "
-		} else {";
-		if ($fk->isComposite()) {
+		} elseif ($objectName instanceOf PropelCollection) {
+			if ({$objectName}->isEmpty()) {
+				return \$this->add(null, '1<>1', Criteria::CUSTOM);
+			}
+			foreach ({$objectName} as \$object) {";
+		$i = 0;
+		foreach ($fk->getLocalForeignMapping() as $localColumn => $foreignColumn) {
+			$localColumnObject = $table->getColumn($localColumn);
+			$foreignColumnObject = $fkTable->getColumn($foreignColumn);
 			$script .= "
-			throw new PropelException('filterBy$relationName() only accepts arguments of type $fkPhpName');";
-		} else {
-			$script .= "
-			throw new PropelException('filterBy$relationName() only accepts arguments of type $fkPhpName or PropelCollection');";
+				\$cton$i = \$this->getNewCriterion(" . $this->getColumnConstant($localColumnObject) . ", \$object->get" . $foreignColumnObject->getPhpName() . "(), \$comparison);";
+			if ($i>0) {
+				$script .= "
+				\$cton0->addAnd(\$cton$i);";
+			}
+			$i++;
 		}
 		$script .= "
+				\$this->addOr(\$cton0);
+			}
+			return \$this;
+		} else {
+			throw new PropelException('filterBy$relationName() only accepts arguments of type $fkPhpName or PropelCollection');
 		}
 	}
 ";
